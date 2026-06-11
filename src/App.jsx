@@ -69,7 +69,7 @@ function App() {
 
       const data = await response.json();
 
-      setDraft(data.content || "");
+      setDraft(data.draft_content || "");
       console.log(data);
     } catch (error) {
       console.log(error);
