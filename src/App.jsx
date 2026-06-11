@@ -5,15 +5,16 @@ import { FacebookLoginButton } from "react-social-login-buttons";
 function App() {
   const [profile, setProfile] = useState(null);
   const [pages, setPages] = useState([]);
-  const [longLivedToken, setLongLivedToken] = useState("");
   const [selectedPage, setSelectedPage] = useState(null);
-  const [content, setContent] = useState("");
-  const [loading, setLoading] = useState(false);
 
-  const getPages = async (accessToken) => {
+  const [prompt, setPrompt] = useState("");
+  const [draft, setDraft] = useState("");
+
+  const [loadingDraft, setLoadingDraft] = useState(false);
+  const [posting, setPosting] = useState(false);
+
+  const getPages = async (token) => {
     try {
-      console.log("SEND TO BACKEND TOKEN:", accessToken);
-
       const response = await fetch(
         "https://zqzffq-3000.csb.app/facebook/exchange",
         {
@@ -21,31 +22,21 @@ function App() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ accessToken }),
+          body: JSON.stringify({
+            accessToken: token,
+          }),
         }
       );
 
       const data = await response.json();
-      console.log("BACKEND RESPONSE:", data);
 
-      if (!data.longLivedToken) {
-        alert("Không lấy được long lived token");
-        return;
-      }
-
-      setLongLivedToken(data.longLivedToken);
+      const longToken = data.longLivedToken || data.access_token;
 
       const pageResponse = await fetch(
-        `https://graph.facebook.com/v23.0/me/accounts?access_token=${data.longLivedToken}`
+        `https://graph.facebook.com/v23.0/me/accounts?access_token=${longToken}`
       );
 
       const pageData = await pageResponse.json();
-      console.log("PAGES:", pageData);
-
-      if (pageData.error) {
-        alert(pageData.error.message);
-        return;
-      }
 
       setPages(pageData.data || []);
     } catch (error) {
@@ -53,15 +44,56 @@ function App() {
     }
   };
 
-  const submitPost = async () => {
-    if (!selectedPage) return alert("Chọn page trước");
-    if (!content.trim()) return alert("Nhập nội dung");
+  const generateDraft = async () => {
+    if (!prompt.trim()) {
+      alert("Nhập yêu cầu tạo bài viết");
+      return;
+    }
 
     try {
-      setLoading(true);
+      setLoadingDraft(true);
 
-      await fetch(
+      const response = await fetch(
         "https://thanh08.app.n8n.cloud/webhook-test/facebook-post",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            prompt,
+            pageName: selectedPage?.name,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      setDraft(data.content || "");
+    } catch (error) {
+      console.log(error);
+      alert("Không tạo được bài viết");
+    } finally {
+      setLoadingDraft(false);
+    }
+  };
+
+  const publishPost = async () => {
+    if (!selectedPage) {
+      alert("Vui lòng chọn page");
+      return;
+    }
+
+    if (!draft.trim()) {
+      alert("Chưa có nội dung bài viết");
+      return;
+    }
+
+    try {
+      setPosting(true);
+
+      const response = await fetch(
+        "https://thanh08.app.n8n.cloud/webhook-test/publish-post",
         {
           method: "POST",
           headers: {
@@ -71,103 +103,192 @@ function App() {
             pageId: selectedPage.id,
             pageName: selectedPage.name,
             pageAccessToken: selectedPage.access_token,
-            content,
+            content: draft,
           }),
         }
       );
 
-      alert("Đã gửi tới n8n");
-      setContent("");
-    } catch (err) {
-      console.log(err);
-      alert("Lỗi khi gửi");
+      const result = await response.json();
+
+      console.log(result);
+
+      alert("Đăng bài thành công");
+    } catch (error) {
+      console.log(error);
+      alert("Đăng bài thất bại");
     } finally {
-      setLoading(false);
+      setPosting(false);
     }
   };
 
   return (
-    <div style={{ minHeight: "100vh", padding: 30, background: "#f4f6f8" }}>
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "#f5f5f5",
+        padding: 30,
+      }}
+    >
       {!profile ? (
-        <div style={{ maxWidth: 400, margin: "100px auto" }}>
+        <div
+          style={{
+            maxWidth: 400,
+            margin: "100px auto",
+          }}
+        >
           <LoginSocialFacebook
-            appId="3161467347396014"
-            scope="public_profile,email,pages_show_list,pages_read_engagement,pages_manage_posts"
+            appId="YOUR_APP_ID"
+            scope="pages_show_list,pages_read_engagement,pages_manage_posts"
             onResolve={(response) => {
-              console.log("LOGIN RESPONSE:", response);
-
               const user = response.data;
-
-              const token =
-                user.accessToken ||
-                user.access_token ||
-                response.data?.accessToken;
-
-              if (!token) {
-                alert("Không lấy được access token");
-                return;
-              }
 
               setProfile(user);
 
-              getPages(token);
+              getPages(user.accessToken);
             }}
-            onReject={(err) => console.log(err)}
+            onReject={(error) => {
+              console.log(error);
+            }}
           >
             <FacebookLoginButton />
           </LoginSocialFacebook>
         </div>
       ) : (
-        <div>
-          <div style={{ background: "#fff", padding: 20, borderRadius: 12 }}>
+        <>
+          <div
+            style={{
+              background: "#fff",
+              padding: 20,
+              borderRadius: 12,
+              marginBottom: 20,
+            }}
+          >
             <h2>{profile.name}</h2>
+            <p>{profile.email}</p>
           </div>
 
-          <h3>User Access Token</h3>
-          <textarea rows={4} value={profile.accessToken || ""} readOnly />
+          <h2>Danh sách Page</h2>
 
-          <h3>Long Lived Token</h3>
-          <textarea rows={4} value={longLivedToken} readOnly />
-
-          <h2>Pages</h2>
-
-          <div style={{ display: "grid", gap: 10 }}>
-            {pages.map((p) => (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns:
+                "repeat(auto-fill,minmax(250px,1fr))",
+              gap: 20,
+              marginTop: 20,
+            }}
+          >
+            {pages.map((page) => (
               <div
-                key={p.id}
-                onClick={() => setSelectedPage(p)}
+                key={page.id}
+                onClick={() => setSelectedPage(page)}
                 style={{
-                  padding: 15,
-                  border: "1px solid #ddd",
-                  cursor: "pointer",
                   background:
-                    selectedPage?.id === p.id ? "#1877f2" : "#fff",
+                    selectedPage?.id === page.id
+                      ? "#1877f2"
+                      : "#fff",
                   color:
-                    selectedPage?.id === p.id ? "#fff" : "#000",
+                    selectedPage?.id === page.id
+                      ? "#fff"
+                      : "#000",
+                  border: "1px solid #ddd",
+                  borderRadius: 12,
+                  padding: 20,
+                  cursor: "pointer",
                 }}
               >
-                {p.name}
+                <h3>{page.name}</h3>
+                <p>{page.id}</p>
               </div>
             ))}
           </div>
 
           {selectedPage && (
-            <div style={{ marginTop: 20 }}>
-              <h3>Post to {selectedPage.name}</h3>
+            <div
+              style={{
+                marginTop: 30,
+                background: "#fff",
+                padding: 20,
+                borderRadius: 12,
+              }}
+            >
+              <h2>Page đã chọn: {selectedPage.name}</h2>
+
+              <h3>Yêu cầu tạo bài viết</h3>
 
               <textarea
-                rows={6}
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                style={{ width: "100%" }}
+                rows={5}
+                style={{
+                  width: "100%",
+                  padding: 12,
+                }}
+                value={prompt}
+                onChange={(e) =>
+                  setPrompt(e.target.value)
+                }
+                placeholder="Ví dụ: Viết bài giới thiệu dịch vụ AI cho doanh nghiệp..."
               />
 
-              <button onClick={submitPost} disabled={loading}>
-                {loading ? "Sending..." : "Send to n8n"}
+              <button
+                onClick={generateDraft}
+                disabled={loadingDraft}
+                style={{
+                  marginTop: 15,
+                  padding: "12px 24px",
+                  border: "none",
+                  borderRadius: 8,
+                  cursor: "pointer",
+                }}
+              >
+                {loadingDraft
+                  ? "Đang tạo..."
+                  : "Tạo bài viết"}
               </button>
+
+              {draft && (
+                <>
+                  <h3
+                    style={{
+                      marginTop: 30,
+                    }}
+                  >
+                    Draft bài viết
+                  </h3>
+
+                  <textarea
+                    rows={10}
+                    style={{
+                      width: "100%",
+                      padding: 12,
+                    }}
+                    value={draft}
+                    onChange={(e) =>
+                      setDraft(e.target.value)
+                    }
+                  />
+
+                  <button
+                    onClick={publishPost}
+                    disabled={posting}
+                    style={{
+                      marginTop: 15,
+                      padding: "12px 24px",
+                      border: "none",
+                      borderRadius: 8,
+                      background: "#1877f2",
+                      color: "#fff",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {posting
+                      ? "Đang đăng..."
+                      : "Đăng lên Facebook"}
+                  </button>
+                </>
+              )}
             </div>
           )}
-        </div>
+        </>
       )}
     </div>
   );
