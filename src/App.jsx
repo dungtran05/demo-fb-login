@@ -54,7 +54,7 @@ function App() {
       setLoadingDraft(true);
 
       const response = await fetch(
-        "https://thanh08.app.n8n.cloud/webhook/create-draft",
+        "https://thanh08.app.n8n.cloud/webhook-test/create-draft",
         {
           method: "POST",
           headers: {
@@ -95,7 +95,7 @@ function App() {
       setPosting(true);
 
       const response = await fetch(
-        "https://thanh08.app.n8n.cloud/webhook/create-draft",
+        "https://thanh08.app.n8n.cloud/webhook-test/publish-post",
         {
           method: "POST",
           headers: {
