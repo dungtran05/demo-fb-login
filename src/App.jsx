@@ -13,7 +13,7 @@ function App() {
   const getPages = async (token) => {
     try {
       const response = await fetch(
-        "http://localhost:3000/facebook/exchange",
+        "https://zqzffq-3000.csb.app/facebook/exchange",
         {
           method: "POST",
           headers: {
