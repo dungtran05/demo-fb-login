@@ -61,7 +61,7 @@ function App() {
       setLoading(true);
 
       await fetch(
-        "https://thanh08.app.n8n.cloud/webhook/facebook-post",
+        "https://thanh08.app.n8n.cloud/webhook-test/facebook-post",
         {
           method: "POST",
           headers: {
