@@ -92,7 +92,7 @@ function App() {
         <div style={{ maxWidth: 400, margin: "100px auto" }}>
           <LoginSocialFacebook
             appId="1757303652298688"
-            scope="public_profile,email,pages_show_list,pages_read_engagement,pages_manage_posts"
+            scope="public_profile,email"
             onResolve={(response) => {
               console.log("LOGIN RESPONSE:", response);
 
