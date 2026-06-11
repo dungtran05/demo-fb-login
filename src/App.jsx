@@ -137,7 +137,7 @@ function App() {
           }}
         >
           <LoginSocialFacebook
-            appId="YOUR_APP_ID"
+            appId="3161467347396014"
             scope="pages_show_list,pages_read_engagement,pages_manage_posts"
             onResolve={(response) => {
               const user = response.data;
