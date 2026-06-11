@@ -70,6 +70,7 @@ function App() {
       const data = await response.json();
 
       setDraft(data.content || "");
+      console.log(data);
     } catch (error) {
       console.log(error);
       alert("Không tạo được bài viết");
