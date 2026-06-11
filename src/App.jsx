@@ -54,7 +54,7 @@ function App() {
       setLoadingDraft(true);
 
       const response = await fetch(
-        "https://thanh08.app.n8n.cloud/webhook-test/facebook-post",
+        "https://thanh08.app.n8n.cloud/webhook-test/create-draft",
         {
           method: "POST",
           headers: {
