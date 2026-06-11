@@ -62,6 +62,7 @@ function App() {
           },
           body: JSON.stringify({
             prompt,
+            action: "generate",
             pageName: selectedPage?.name,
           }),
         }
@@ -105,6 +106,7 @@ function App() {
             pageName: selectedPage.name,
             pageAccessToken: selectedPage.access_token,
             content: draft,
+            action: "publish",
           }),
         }
       );
