@@ -10,8 +10,10 @@ function App() {
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const getPages = async (token) => {
+  const getPages = async (accessToken) => {
     try {
+      console.log("SEND TO BACKEND TOKEN:", accessToken);
+
       const response = await fetch(
         "https://zqzffq-3000.csb.app/facebook/exchange",
         {
@@ -19,15 +21,17 @@ function App() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            accessToken: token,
-          }),
+          body: JSON.stringify({ accessToken }),
         }
       );
 
       const data = await response.json();
-
       console.log("BACKEND RESPONSE:", data);
+
+      if (!data.longLivedToken) {
+        alert("Không lấy được long lived token");
+        return;
+      }
 
       setLongLivedToken(data.longLivedToken);
 
@@ -36,27 +40,22 @@ function App() {
       );
 
       const pageData = await pageResponse.json();
-
       console.log("PAGES:", pageData);
 
-      if (pageData.data) {
-        setPages(pageData.data);
+      if (pageData.error) {
+        alert(pageData.error.message);
+        return;
       }
+
+      setPages(pageData.data || []);
     } catch (error) {
       console.log(error);
     }
   };
 
   const submitPost = async () => {
-    if (!selectedPage) {
-      alert("Vui lòng chọn trang");
-      return;
-    }
-
-    if (!content.trim()) {
-      alert("Vui lòng nhập nội dung");
-      return;
-    }
+    if (!selectedPage) return alert("Chọn page trước");
+    if (!content.trim()) return alert("Nhập nội dung");
 
     try {
       setLoading(true);
@@ -78,181 +77,97 @@ function App() {
       );
 
       alert("Đã gửi tới n8n");
-
       setContent("");
-    } catch (error) {
-      console.log(error);
-      alert("Có lỗi xảy ra");
+    } catch (err) {
+      console.log(err);
+      alert("Lỗi khi gửi");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "#f4f6f8",
-        padding: "30px",
-      }}
-    >
+    <div style={{ minHeight: "100vh", padding: 30, background: "#f4f6f8" }}>
       {!profile ? (
-        <div
-          style={{
-            maxWidth: "400px",
-            margin: "100px auto",
-          }}
-        >
+        <div style={{ maxWidth: 400, margin: "100px auto" }}>
           <LoginSocialFacebook
             appId="2750614468645383"
-            scope="pages_show_list,pages_read_engagement,pages_manage_posts"
+            scope="public_profile,email,pages_show_list,pages_read_engagement,pages_manage_posts"
             onResolve={(response) => {
               console.log("LOGIN RESPONSE:", response);
 
               const user = response.data;
 
+              const token =
+                user.accessToken ||
+                user.access_token ||
+                response.data?.accessToken;
+
+              if (!token) {
+                alert("Không lấy được access token");
+                return;
+              }
+
               setProfile(user);
 
-              getPages(user.accessToken);
+              getPages(token);
             }}
-            onReject={(error) => {
-              console.log(error);
-            }}
+            onReject={(err) => console.log(err)}
           >
             <FacebookLoginButton />
           </LoginSocialFacebook>
         </div>
       ) : (
-        <>
-          <div
-            style={{
-              background: "#fff",
-              padding: "20px",
-              borderRadius: "12px",
-              display: "flex",
-              alignItems: "center",
-              gap: "20px",
-              marginBottom: "30px",
-            }}
-          >
-            <img
-              src={profile.picture.data.url}
-              alt=""
-              style={{
-                width: "80px",
-                height: "80px",
-                borderRadius: "50%",
-              }}
-            />
-
-            <div>
-              <h2>{profile.name}</h2>
-            </div>
+        <div>
+          <div style={{ background: "#fff", padding: 20, borderRadius: 12 }}>
+            <h2>{profile.name}</h2>
           </div>
 
           <h3>User Access Token</h3>
-
-          <textarea
-            rows={4}
-            cols={100}
-            value={profile.accessToken}
-            readOnly
-          />
+          <textarea rows={4} value={profile.accessToken || ""} readOnly />
 
           <h3>Long Lived Token</h3>
+          <textarea rows={4} value={longLivedToken} readOnly />
 
-          <textarea
-            rows={4}
-            cols={100}
-            value={longLivedToken}
-            readOnly
-          />
+          <h2>Pages</h2>
 
-          <h2 style={{ marginTop: "30px" }}>
-            Danh sách trang
-          </h2>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns:
-                "repeat(auto-fill,minmax(250px,1fr))",
-              gap: "20px",
-              marginTop: "20px",
-            }}
-          >
-            {pages.map((page) => (
+          <div style={{ display: "grid", gap: 10 }}>
+            {pages.map((p) => (
               <div
-                key={page.id}
-                onClick={() => setSelectedPage(page)}
+                key={p.id}
+                onClick={() => setSelectedPage(p)}
                 style={{
-                  padding: "20px",
-                  borderRadius: "12px",
+                  padding: 15,
+                  border: "1px solid #ddd",
                   cursor: "pointer",
                   background:
-                    selectedPage?.id === page.id
-                      ? "#1877f2"
-                      : "#fff",
+                    selectedPage?.id === p.id ? "#1877f2" : "#fff",
                   color:
-                    selectedPage?.id === page.id
-                      ? "#fff"
-                      : "#000",
-                  border: "1px solid #ddd",
+                    selectedPage?.id === p.id ? "#fff" : "#000",
                 }}
               >
-                <h3>{page.name}</h3>
-                <p>{page.id}</p>
+                {p.name}
               </div>
             ))}
           </div>
 
           {selectedPage && (
-            <div
-              style={{
-                marginTop: "30px",
-                background: "#fff",
-                padding: "20px",
-                borderRadius: "12px",
-              }}
-            >
-              <h2>
-                Đăng bài lên: {selectedPage.name}
-              </h2>
+            <div style={{ marginTop: 20 }}>
+              <h3>Post to {selectedPage.name}</h3>
 
               <textarea
-                rows={8}
-                style={{
-                  width: "100%",
-                  padding: "12px",
-                  marginTop: "10px",
-                }}
-                placeholder="Nhập nội dung bài viết..."
+                rows={6}
                 value={content}
-                onChange={(e) =>
-                  setContent(e.target.value)
-                }
+                onChange={(e) => setContent(e.target.value)}
+                style={{ width: "100%" }}
               />
 
-              <button
-                onClick={submitPost}
-                disabled={loading}
-                style={{
-                  marginTop: "15px",
-                  padding: "12px 24px",
-                  border: "none",
-                  borderRadius: "8px",
-                  background: "#1877f2",
-                  color: "#fff",
-                  cursor: "pointer",
-                }}
-              >
-                {loading
-                  ? "Đang gửi..."
-                  : "Gửi tới n8n"}
+              <button onClick={submitPost} disabled={loading}>
+                {loading ? "Sending..." : "Send to n8n"}
               </button>
             </div>
           )}
-        </>
+        </div>
       )}
     </div>
   );
