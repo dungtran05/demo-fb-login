@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { LoginSocialFacebook } from "reactjs-social-login";
 import { FacebookLoginButton } from "react-social-login-buttons";
-
 function App() {
   const [profile, setProfile] = useState(null);
   const [pages, setPages] = useState([]);
@@ -54,7 +53,7 @@ function App() {
       setLoadingDraft(true);
 
       const response = await fetch(
-        "https://thanh08.app.n8n.cloud/webhook-test/create-draft",
+        "https://thanh08.app.n8n.cloud/webhook/create-draft",
         {
           method: "POST",
           headers: {
@@ -95,7 +94,7 @@ function App() {
       setPosting(true);
 
       const response = await fetch(
-        "https://thanh08.app.n8n.cloud/webhook-test/publish-post",
+        "https://thanh08.app.n8n.cloud/webhook/publish-post",
         {
           method: "POST",
           headers: {
