@@ -38,6 +38,40 @@ const PLATFORM_LABELS = {
   linkedin: "LinkedIn",
 };
 
+// Các preset chỉnh văn phong theo mùa vụ -> gửi qua action: "revise"
+const SEASONAL_PRESETS = [
+  {
+    label: "🎁 Tết Nguyên Đán",
+    feedback:
+      "Chỉnh lại bài viết theo không khí Tết Nguyên Đán: ấm áp, sum vầy, lời chúc năm mới, dùng hình ảnh hoa mai/hoa đào, lì xì.",
+  },
+  {
+    label: "☀️ Mùa hè",
+    feedback:
+      "Chỉnh lại bài viết theo phong cách mùa hè: tươi mát, năng động, trẻ trung, gợi không khí du lịch biển và nắng hè.",
+  },
+  {
+    label: "🌕 Trung Thu",
+    feedback:
+      "Chỉnh lại bài viết theo không khí Trung Thu: đoàn viên, ấm cúng, gợi hình ảnh đèn lồng, bánh trung thu, gia đình.",
+  },
+  {
+    label: "🎄 Giáng Sinh",
+    feedback:
+      "Chỉnh lại bài viết theo không khí Giáng Sinh: ấm áp, lung linh, lời chúc Noel, hình ảnh cây thông và quà tặng.",
+  },
+  {
+    label: "🛍️ Black Friday / Sale",
+    feedback:
+      "Chỉnh lại bài viết theo mùa sale Black Friday: nhấn mạnh ưu đãi, giảm giá sốc, kêu gọi mua ngay, tạo cảm giác khẩn cấp.",
+  },
+  {
+    label: "🍂 Mùa thu",
+    feedback:
+      "Chỉnh lại bài viết theo phong cách mùa thu: nhẹ nhàng, lãng mạn, hoài niệm, gợi hình ảnh lá vàng và tiết trời se lạnh.",
+  },
+];
+
 function App() {
   const [profile, setProfile] = useState(null);
   const [platform, setPlatform] = useState(""); // facebook | instagram | linkedin
@@ -227,8 +261,11 @@ function App() {
   };
 
   // action: "create" -> tạo bài mới, "revise" -> chỉnh sửa theo feedback
-  const requestDraft = async (action) => {
-    if (!prompt.trim()) {
+  // feedbackOverride: feedback dựng sẵn (vd nút chỉnh văn phong theo mùa vụ)
+  const requestDraft = async (action, feedbackOverride = "") => {
+    const feedbackText = feedbackOverride || prompt;
+
+    if (!feedbackText.trim()) {
       alert(
         action === "revise"
           ? "Nhập feedback để chỉnh sửa bài viết"
@@ -257,7 +294,7 @@ function App() {
           : {
               action,
               conversation_id: conversationId,
-              feedback: prompt,
+              feedback: feedbackText,
             };
 
       const response = await fetch(AGENT_URL, {
@@ -300,6 +337,8 @@ function App() {
 
   const generateDraft = () => requestDraft("create");
   const reviseDraft = () => requestDraft("revise");
+  // Chỉnh văn phong theo mùa vụ bằng feedback dựng sẵn
+  const reviseSeasonal = (feedback) => requestDraft("revise", feedback);
 
   const publishPost = async () => {
     if (selectedPages.length === 0) {
@@ -564,6 +603,36 @@ function App() {
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
                   />
+
+                  <h3 style={{ marginTop: 20 }}>
+                    Chỉnh văn phong theo mùa vụ
+                  </h3>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: 10,
+                    }}
+                  >
+                    {SEASONAL_PRESETS.map((preset) => (
+                      <button
+                        key={preset.label}
+                        onClick={() => reviseSeasonal(preset.feedback)}
+                        disabled={loadingDraft}
+                        style={{
+                          padding: "8px 16px",
+                          border: "1px solid #1877f2",
+                          borderRadius: 20,
+                          background: "#fff",
+                          color: "#1877f2",
+                          cursor: loadingDraft ? "default" : "pointer",
+                          opacity: loadingDraft ? 0.6 : 1,
+                        }}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
 
                   <h3 style={{ marginTop: 20 }}>
                     URL ảnh{" "}
