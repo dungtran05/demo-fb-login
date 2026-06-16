@@ -1,7 +1,6 @@
 import { useState } from "react";
 import {
   LoginSocialFacebook,
-  LoginSocialInstagram,
   LoginSocialLinkedin,
 } from "reactjs-social-login";
 import {
@@ -31,7 +30,7 @@ const LINKEDIN_SCOPE = "r_liteprofile,r_emailaddress,w_member_social";
 
 // Một endpoint duy nhất cho mọi thao tác, phân biệt bằng trường action
 const AGENT_URL =
-  "https://manhdungrpg.app.n8n.cloud/webhook/social-post-agent";
+  "https://manhdungrpg.app.n8n.cloud/webhook-test/social-post-agent";
 
 const PLATFORM_LABELS = {
   facebook: "Facebook",
@@ -48,6 +47,7 @@ function App() {
 
   const [prompt, setPrompt] = useState("");
   const [draft, setDraft] = useState("");
+  const [imageUrl, setImageUrl] = useState(""); // URL ảnh kèm bài (bắt buộc với Instagram)
   // conversation_id do agent quản lý: tạo ở bước create, dùng lại cho revise & publish
   const [conversationId, setConversationId] = useState("");
 
@@ -222,6 +222,7 @@ function App() {
     setSelectedPages([]);
     setDraft("");
     setPrompt("");
+    setImageUrl("");
     setConversationId("");
   };
 
@@ -309,11 +310,16 @@ function App() {
       alert("Chưa có bài viết — hãy tạo bài viết trước");
       return;
     }
+    // Instagram bắt buộc có ảnh/video
+    if (platform === "instagram" && !imageUrl.trim()) {
+      alert("Instagram bắt buộc có ảnh — vui lòng nhập URL ảnh");
+      return;
+    }
 
     try {
       setPosting(true);
 
-      // publish -> { conversation_id, page_id, page_access_token } cho từng trang
+      // publish -> { conversation_id, page_id, page_access_token, image_url? } cho từng trang
       const results = await Promise.all(
         selectedPages.map((page) =>
           fetch(AGENT_URL, {
@@ -322,8 +328,10 @@ function App() {
             body: JSON.stringify({
               action: "publish",
               conversation_id: conversationId,
+              platform, // facebook | instagram -> backend đăng đúng nơi
               page_id: page.id,
               page_access_token: page.access_token,
+              image_url: imageUrl.trim() || undefined,
             }),
           }).then((res) => safeJson(res))
         )
@@ -364,15 +372,16 @@ function App() {
             <FacebookLoginButton />
           </LoginSocialFacebook>
 
-          <LoginSocialInstagram
-            client_id={INSTAGRAM_APP_ID}
+          {/* Instagram Business đăng nhập QUA Facebook OAuth (kèm scope Instagram)
+              để lấy được IG account + page token dùng cho Graph API publishing */}
+          <LoginSocialFacebook
+            appId={FACEBOOK_APP_ID}
             scope={INSTAGRAM_SCOPE}
-            redirect_uri={window.location.href}
             onResolve={(response) => handleLogin("instagram", response)}
             onReject={(error) => console.log(error)}
           >
             <InstagramLoginButton />
-          </LoginSocialInstagram>
+          </LoginSocialFacebook>
 
           <LoginSocialLinkedin
             client_id={LINKEDIN_CLIENT_ID}
@@ -555,6 +564,42 @@ function App() {
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
                   />
+
+                  <h3 style={{ marginTop: 20 }}>
+                    URL ảnh{" "}
+                    {platform === "instagram"
+                      ? "(bắt buộc với Instagram)"
+                      : "(tùy chọn)"}
+                  </h3>
+
+                  <input
+                    type="url"
+                    style={{ width: "100%", padding: 12 }}
+                    value={imageUrl}
+                    onChange={(e) => setImageUrl(e.target.value)}
+                    placeholder="https://example.com/anh.jpg"
+                  />
+
+                  {imageUrl.trim() && (
+                    <div style={{ marginTop: 12 }}>
+                      <img
+                        src={imageUrl}
+                        alt="preview"
+                        style={{
+                          maxWidth: "100%",
+                          maxHeight: 300,
+                          borderRadius: 8,
+                          objectFit: "contain",
+                        }}
+                        onError={(e) =>
+                          (e.currentTarget.style.display = "none")
+                        }
+                        onLoad={(e) =>
+                          (e.currentTarget.style.display = "block")
+                        }
+                      />
+                    </div>
+                  )}
 
                   <button
                     onClick={publishPost}
