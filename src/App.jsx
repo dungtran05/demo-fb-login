@@ -15,7 +15,8 @@ const FACEBOOK_APP_ID =
   import.meta.env.VITE_FB_APP_ID || "3161467347396014";
 // ⚠️ Để APP_SECRET ở frontend sẽ bị lộ trong bundle — chỉ dùng cho demo.
 const FACEBOOK_APP_SECRET = import.meta.env.VITE_FB_APP_SECRET || "08b5f8ff7c9140f136b22d9e7b41c3df";
-const INSTAGRAM_APP_ID = FACEBOOK_APP_ID; // Instagram Business đi qua app Facebook
+const INSTAGRAM_APP_ID = import.meta.env.VITE_INSTAGRAM_APP_ID || "1480645953833591"; // Instagram Business đi qua app Facebook
+const INSTAGRAM_APP_SECRET = import.meta.env.VITE_INSTAGRAM_APP_SECRET || "d0432b49e11135404e73e5f53599aa17";
 const LINKEDIN_CLIENT_ID =
   import.meta.env.VITE_LINKEDIN_CLIENT_ID || "YOUR_LINKEDIN_CLIENT_ID";
 const LINKEDIN_CLIENT_SECRET =
@@ -30,7 +31,7 @@ const LINKEDIN_SCOPE = "r_liteprofile,r_emailaddress,w_member_social";
 
 // Một endpoint duy nhất cho mọi thao tác, phân biệt bằng trường action
 const AGENT_URL =
-  "https://manhdungrpg.app.n8n.cloud/webhook-test/social-post-agent";
+  "https://manhdungrpg.app.n8n.cloud/webhook/social-post-agent";
 
 const PLATFORM_LABELS = {
   facebook: "Facebook",
