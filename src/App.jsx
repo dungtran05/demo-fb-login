@@ -4,13 +4,21 @@ import { FacebookLoginButton } from "react-social-login-buttons";
 function App() {
   const [profile, setProfile] = useState(null);
   const [pages, setPages] = useState([]);
-  const [selectedPage, setSelectedPage] = useState(null);
+  const [selectedPages, setSelectedPages] = useState([]);
 
   const [prompt, setPrompt] = useState("");
   const [draft, setDraft] = useState("");
 
   const [loadingDraft, setLoadingDraft] = useState(false);
-  const [posting, setPosting] = useState(false);
+  const [posting, setPosting] = useState("");
+
+  const togglePage = (page) => {
+    setSelectedPages((prev) =>
+      prev.some((p) => p.id === page.id)
+        ? prev.filter((p) => p.id !== page.id)
+        : [...prev, page]
+    );
+  };
 
   const getPages = async (token) => {
     try {
@@ -62,7 +70,7 @@ function App() {
           body: JSON.stringify({
             prompt,
             action: "generate",
-            pageName: selectedPage?.name,
+            pageNames: selectedPages.map((p) => p.name),
           }),
         }
       );
@@ -79,9 +87,9 @@ function App() {
     }
   };
 
-  const publishPost = async () => {
-    if (!selectedPage) {
-      alert("Vui lòng chọn page");
+  const publishPost = async (platform) => {
+    if (selectedPages.length === 0) {
+      alert("Vui lòng chọn ít nhất một page");
       return;
     }
 
@@ -91,35 +99,37 @@ function App() {
     }
 
     try {
-      setPosting(true);
+      setPosting(platform);
 
-      const response = await fetch(
-        "https://thanh08.app.n8n.cloud/webhook/publish-post",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            pageId: selectedPage.id,
-            pageName: selectedPage.name,
-            pageAccessToken: selectedPage.access_token,
-            content: draft,
-            action: "publish",
-          }),
-        }
+      const results = await Promise.all(
+        selectedPages.map((page) =>
+          fetch("https://thanh08.app.n8n.cloud/webhook/publish-post", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              platform,
+              pageId: page.id,
+              pageName: page.name,
+              pageAccessToken: page.access_token,
+              content: draft,
+              action: "publish",
+            }),
+          }).then((res) => res.json())
+        )
       );
 
-      const result = await response.json();
+      console.log(results);
 
-      console.log(result);
-
-      alert("Đăng bài thành công");
+      alert(
+        `Đăng lên ${platform} thành công (${selectedPages.length} page)`
+      );
     } catch (error) {
       console.log(error);
-      alert("Đăng bài thất bại");
+      alert(`Đăng lên ${platform} thất bại`);
     } finally {
-      setPosting(false);
+      setPosting("");
     }
   };
 
