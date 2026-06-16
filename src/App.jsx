@@ -193,14 +193,14 @@ function App() {
             {pages.map((page) => (
               <div
                 key={page.id}
-                onClick={() => setSelectedPage(page)}
+                onClick={() => togglePage(page)}
                 style={{
                   background:
-                    selectedPage?.id === page.id
+                    selectedPages.some((p) => p.id === page.id)
                       ? "#1877f2"
                       : "#fff",
                   color:
-                    selectedPage?.id === page.id
+                    selectedPages.some((p) => p.id === page.id)
                       ? "#fff"
                       : "#000",
                   border: "1px solid #ddd",
@@ -215,7 +215,7 @@ function App() {
             ))}
           </div>
 
-          {selectedPage && (
+          {selectedPages.length > 0 && (
             <div
               style={{
                 marginTop: 30,
@@ -224,7 +224,10 @@ function App() {
                 borderRadius: 12,
               }}
             >
-              <h2>Page đã chọn: {selectedPage.name}</h2>
+              <h2>
+                Page đã chọn:{" "}
+                {selectedPages.map((p) => p.name).join(", ")}
+              </h2>
 
               <h3>Yêu cầu tạo bài viết</h3>
 
