@@ -47,6 +47,8 @@ function App() {
 
   const [prompt, setPrompt] = useState("");
   const [draft, setDraft] = useState("");
+  // conversation_id do agent quản lý: tạo ở bước create, dùng lại cho revise & publish
+  const [conversationId, setConversationId] = useState("");
 
   const [loadingDraft, setLoadingDraft] = useState(false);
   const [posting, setPosting] = useState(false);
@@ -86,6 +88,17 @@ function App() {
     // Lồng sâu hơn: { json: {...} } hoặc { data: {...} }
     if (data.json) return extractDraft(data.json);
     if (data.data) return extractDraft(data.data);
+    return "";
+  };
+
+  // Trích conversation_id từ response (nhiều dạng lồng nhau)
+  const extractConversationId = (data) => {
+    if (data == null || typeof data === "string") return "";
+    if (Array.isArray(data)) return extractConversationId(data[0]);
+    if (data.conversation_id) return data.conversation_id;
+    if (data.conversationId) return data.conversationId;
+    if (data.json) return extractConversationId(data.json);
+    if (data.data) return extractConversationId(data.data);
     return "";
   };
 
@@ -208,36 +221,47 @@ function App() {
     setSelectedPages([]);
     setDraft("");
     setPrompt("");
+    setConversationId("");
   };
 
-  // action: "create" -> tạo bài mới, "revise" -> chỉnh sửa draft hiện có
+  // action: "create" -> tạo bài mới, "revise" -> chỉnh sửa theo feedback
   const requestDraft = async (action) => {
     if (!prompt.trim()) {
       alert(
         action === "revise"
-          ? "Nhập yêu cầu chỉnh sửa bài viết"
+          ? "Nhập feedback để chỉnh sửa bài viết"
           : "Nhập yêu cầu tạo bài viết"
       );
       return;
     }
-    if (action === "revise" && !draft.trim()) {
-      alert("Chưa có draft để chỉnh sửa");
+    if (action === "revise" && !conversationId) {
+      alert("Chưa có cuộc hội thoại — hãy tạo bài viết trước");
       return;
     }
 
     try {
       setLoadingDraft(true);
 
+      // create -> { user_id, input, conversation_id? }
+      // revise -> { conversation_id, feedback }
+      const body =
+        action === "create"
+          ? {
+              action,
+              conversation_id: conversationId || undefined,
+              user_id: profile?.id || profile?.userID || "",
+              input: prompt,
+            }
+          : {
+              action,
+              conversation_id: conversationId,
+              feedback: prompt,
+            };
+
       const response = await fetch(AGENT_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action,
-          prompt,
-          platform,
-          currentDraft: action === "revise" ? draft : "",
-          pageNames: selectedPages.map((p) => p.name),
-        }),
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) {
@@ -245,8 +269,12 @@ function App() {
       }
 
       const data = await safeJson(response);
-      const draftContent = extractDraft(data);
 
+      // Lưu lại conversation_id (agent tự sinh ở lần create đầu tiên)
+      const cid = extractConversationId(data);
+      if (cid) setConversationId(cid);
+
+      const draftContent = extractDraft(data);
       if (!draftContent) {
         console.log("Response không có nội dung draft:", data);
         alert(
@@ -276,14 +304,15 @@ function App() {
       alert("Vui lòng chọn ít nhất một trang/tài khoản");
       return;
     }
-    if (!draft.trim()) {
-      alert("Chưa có nội dung bài viết");
+    if (!conversationId) {
+      alert("Chưa có bài viết — hãy tạo bài viết trước");
       return;
     }
 
     try {
       setPosting(true);
 
+      // publish -> { conversation_id, page_id, page_access_token } cho từng trang
       const results = await Promise.all(
         selectedPages.map((page) =>
           fetch(AGENT_URL, {
@@ -291,11 +320,9 @@ function App() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               action: "publish",
-              platform,
-              pageId: page.id,
-              pageName: page.name,
-              pageAccessToken: page.access_token,
-              content: draft,
+              conversation_id: conversationId,
+              page_id: page.id,
+              page_access_token: page.access_token,
             }),
           }).then((res) => safeJson(res))
         )
@@ -467,14 +494,22 @@ function App() {
                 Đã chọn: {selectedPages.map((p) => p.name).join(", ")}
               </h2>
 
-              <h3>Yêu cầu tạo bài viết</h3>
+              <h3>
+                {conversationId
+                  ? "Feedback để chỉnh sửa bài viết"
+                  : "Yêu cầu tạo bài viết"}
+              </h3>
 
               <textarea
                 rows={5}
                 style={{ width: "100%", padding: 12 }}
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                placeholder="Ví dụ: Viết bài giới thiệu dịch vụ AI cho doanh nghiệp..."
+                placeholder={
+                  conversationId
+                    ? "Ví dụ: Viết ngắn gọn hơn, thêm emoji, đổi giọng văn..."
+                    : "Ví dụ: Viết bài giới thiệu dịch vụ AI cho doanh nghiệp..."
+                }
               />
 
               <div style={{ display: "flex", gap: 12, marginTop: 15 }}>
