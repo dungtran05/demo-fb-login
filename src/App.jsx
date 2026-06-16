@@ -30,7 +30,7 @@ const LINKEDIN_SCOPE = "r_liteprofile,r_emailaddress,w_member_social";
 
 // Một endpoint duy nhất cho mọi thao tác, phân biệt bằng trường action
 const AGENT_URL =
-  "https://manhdungrpg.app.n8n.cloud/webhook-test/social-post-agent";
+  "https://manhdungrpg.app.n8n.cloud/webhook/social-post-agent";
 
 const PLATFORM_LABELS = {
   facebook: "Facebook",
