@@ -103,7 +103,7 @@ function App() {
 
       const results = await Promise.all(
         selectedPages.map((page) =>
-          fetch("https://thanh08.app.n8n.cloud/webhook/publish-post", {
+          fetch("https://manhdungrpg.app.n8n.cloud/webhook/social-post-agent", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
