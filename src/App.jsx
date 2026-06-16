@@ -11,10 +11,16 @@ import {
 } from "react-social-login-buttons";
 
 // Cấu hình OAuth cho từng nền tảng
-const FACEBOOK_APP_ID = "3161467347396014";
-const INSTAGRAM_APP_ID = "3161467347396014"; // Instagram Business đi qua app Facebook
-const LINKEDIN_CLIENT_ID = "YOUR_LINKEDIN_CLIENT_ID";
-const LINKEDIN_CLIENT_SECRET = "YOUR_LINKEDIN_CLIENT_SECRET";
+const FACEBOOK_APP_ID =
+  import.meta.env.VITE_FB_APP_ID || "3161467347396014";
+// ⚠️ Để APP_SECRET ở frontend sẽ bị lộ trong bundle — chỉ dùng cho demo.
+const FACEBOOK_APP_SECRET = import.meta.env.VITE_FB_APP_SECRET || "";
+const INSTAGRAM_APP_ID = FACEBOOK_APP_ID; // Instagram Business đi qua app Facebook
+const LINKEDIN_CLIENT_ID =
+  import.meta.env.VITE_LINKEDIN_CLIENT_ID || "YOUR_LINKEDIN_CLIENT_ID";
+const LINKEDIN_CLIENT_SECRET =
+  import.meta.env.VITE_LINKEDIN_CLIENT_SECRET ||
+  "YOUR_LINKEDIN_CLIENT_SECRET";
 
 const FACEBOOK_SCOPE =
   "pages_show_list,pages_read_engagement,pages_manage_posts";
@@ -22,7 +28,6 @@ const INSTAGRAM_SCOPE =
   "pages_show_list,pages_read_engagement,instagram_basic,instagram_content_publish,business_management";
 const LINKEDIN_SCOPE = "r_liteprofile,r_emailaddress,w_member_social";
 
-const EXCHANGE_URL = "https://zqzffq-3000.csb.app/facebook/exchange";
 // Một endpoint duy nhất cho mọi thao tác, phân biệt bằng trường action
 const AGENT_URL =
   "https://manhdungrpg.app.n8n.cloud/webhook/social-post-agent";
@@ -65,16 +70,22 @@ function App() {
     );
   };
 
-  // Đổi token Facebook ngắn hạn -> dài hạn (dùng chung cho FB & Instagram)
+  // Đổi token Facebook ngắn hạn -> dài hạn (gọi thẳng Graph API, không cần backend)
   const exchangeLongToken = async (token) => {
+    // Không có app secret thì dùng luôn token ngắn hạn
+    if (!FACEBOOK_APP_SECRET) return token;
     try {
-      const response = await fetch(EXCHANGE_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accessToken: token }),
+      const params = new URLSearchParams({
+        grant_type: "fb_exchange_token",
+        client_id: FACEBOOK_APP_ID,
+        client_secret: FACEBOOK_APP_SECRET,
+        fb_exchange_token: token,
       });
+      const response = await fetch(
+        `https://graph.facebook.com/v23.0/oauth/access_token?${params.toString()}`
+      );
       const data = await safeJson(response);
-      return data.longLivedToken || data.access_token || token;
+      return data.access_token || token;
     } catch (error) {
       console.log("exchange error", error);
       return token;
