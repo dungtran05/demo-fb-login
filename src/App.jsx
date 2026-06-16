@@ -46,6 +46,17 @@ function App() {
   const [loadingDraft, setLoadingDraft] = useState(false);
   const [posting, setPosting] = useState(false);
 
+  // Parse JSON an toàn: webhook có thể trả body rỗng hoặc không phải JSON
+  const safeJson = async (res) => {
+    const text = await res.text();
+    if (!text) return {};
+    try {
+      return JSON.parse(text);
+    } catch {
+      return { draft_content: text };
+    }
+  };
+
   const togglePage = (page) => {
     setSelectedPages((prev) =>
       prev.some((p) => p.id === page.id)
@@ -62,7 +73,7 @@ function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ accessToken: token }),
       });
-      const data = await response.json();
+      const data = await safeJson(response);
       return data.longLivedToken || data.access_token || token;
     } catch (error) {
       console.log("exchange error", error);
@@ -191,8 +202,8 @@ function App() {
         }),
       });
 
-      const data = await response.json();
-      setDraft(data.draft_content || "");
+      const data = await safeJson(response);
+      setDraft(data.draft_content || data.content || data.text || "");
     } catch (error) {
       console.log(error);
       alert(
@@ -234,7 +245,7 @@ function App() {
               pageAccessToken: page.access_token,
               content: draft,
             }),
-          }).then((res) => res.json())
+          }).then((res) => safeJson(res))
         )
       );
 
