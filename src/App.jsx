@@ -62,6 +62,33 @@ function App() {
     }
   };
 
+  // Trích nội dung draft từ response n8n (nhiều dạng: mảng, lồng output/json/data...)
+  const extractDraft = (data) => {
+    if (data == null) return "";
+    if (typeof data === "string") return data;
+    // n8n hay trả về mảng item -> lấy phần tử đầu
+    if (Array.isArray(data)) return extractDraft(data[0]);
+
+    const keys = [
+      "draft_content",
+      "draft",
+      "content",
+      "text",
+      "output",
+      "message",
+      "body",
+    ];
+    for (const key of keys) {
+      if (typeof data[key] === "string" && data[key].trim()) {
+        return data[key];
+      }
+    }
+    // Lồng sâu hơn: { json: {...} } hoặc { data: {...} }
+    if (data.json) return extractDraft(data.json);
+    if (data.data) return extractDraft(data.data);
+    return "";
+  };
+
   const togglePage = (page) => {
     setSelectedPages((prev) =>
       prev.some((p) => p.id === page.id)
@@ -213,8 +240,22 @@ function App() {
         }),
       });
 
+      if (!response.ok) {
+        throw new Error(`Webhook trả về lỗi ${response.status}`);
+      }
+
       const data = await safeJson(response);
-      setDraft(data.draft_content || data.content || data.text || "");
+      const draftContent = extractDraft(data);
+
+      if (!draftContent) {
+        console.log("Response không có nội dung draft:", data);
+        alert(
+          "Webhook không trả về nội dung bài viết. Kiểm tra lại node 'Respond to Webhook' trong n8n."
+        );
+        return;
+      }
+
+      setDraft(draftContent);
     } catch (error) {
       console.log(error);
       alert(
